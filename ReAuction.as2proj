@@ -4,7 +4,7 @@
   <output>
     <movie outputType="Application" />
     <movie input="" />
-    <movie path="bin\ReAuction.swf" />
+    <movie path="bin\Reauction.swf" />
     <movie fps="30" />
     <movie width="1000" />
     <movie height="800" />
@@ -35,8 +35,7 @@
   </build>
   <!-- Class files to compile (other referenced classes will automatically be included) -->
   <compileTargets>
-    <compile path="src\ReAuction.as" />
-    <compile path="src\com\fox\ReAuction\ReAuction.as" />
+    <compile path="src\com\fox\Reauction\Reauction.as" />
   </compileTargets>
   <!-- Assets to embed into the output SWF -->
   <library>
@@ -49,11 +48,11 @@
   <!-- Executed before build -->
   <preBuildCommand />
   <!-- Executed after build -->
-  <postBuildCommand alwaysRun="False">xcopy "$(ProjectDir)\bin\*.*" "G:\Secret World Legends\Data\Gui\Custom\Flash\ReAuction\" /e /y
-xcopy "$(ProjectDir)\src\mod\*.*" "G:\Secret World Legends\Data\Gui\Custom\Flash\ReAuction\" /e /y
+  <postBuildCommand alwaysRun="False">xcopy "$(ProjectDir)\bin\*.*" "G:\Secret World Legends\Data\Gui\Custom\Flash\Reauction\" /e /y
+xcopy "$(ProjectDir)\src\mod\*.*" "G:\Secret World Legends\Data\Gui\Custom\Flash\Reauction\" /e /y
 
-xcopy "$(ProjectDir)\src\mod\*.*" "$(ProjectDir)/deployment/data/Gui/custom/flash/$(ProjectName)/*.*" /e /y
-xcopy "$(ProjectDir)\bin\*.*" "$(ProjectDir)/deployment/Data/Gui/Custom/Flash/$(ProjectName)/*.*" /e /y</postBuildCommand>
+xcopy "$(ProjectDir)\src\mod\*.*" "$(ProjectDir)/deployment/data/Gui/custom/flash/Reauction/*.*" /e /y
+xcopy "$(ProjectDir)\bin\*.*" "$(ProjectDir)/deployment/Data/Gui/Custom/Flash/Reauction/*.*" /e /y</postBuildCommand>
   <!-- Other project options -->
   <options>
     <option showHiddenPaths="False" />
