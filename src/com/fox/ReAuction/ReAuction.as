@@ -81,7 +81,49 @@ class com.fox.Reauction.Reauction {
 	
 	private function TradePostOpened() {
 		if (TradePostSignal.GetValue()) {
-			HookWindow(0);
+			var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
+			if (!buyview._visible || !buyview.m_SearchButton._x || !buyview.m_SellItemPromptWindow["SlotCashAmountChanged"]) {
+				setTimeout(Delegate.create(this, TradePostOpened), 50);
+				return
+			}
+			var saveMode = buyview.m_ResultsFooter.attachMovie("CheckboxDark", "m_saveMode",  buyview.m_ResultsFooter.getNextHighestDepth());
+			saveMode.autoSize = "left";
+			saveMode.label = "Save all parameters";
+			saveMode.selected = false;
+			saveMode.selected = !SavedData.MainOnly;
+			saveMode.addEventListener("select", this, "ModeChanged");
+			saveMode._x = buyview.m_ResultsFooter._width - buyview.m_UsableItemsOnlyCheckBox._width - saveMode._width - 10;
+			saveMode._y = buyview.m_ResultsFooter._height / 2 - saveMode._height / 2;
+			DrawButton();
+
+			/*
+			buyview.splitText = undefined;
+			if (!buyview._Search){
+				buyview._Search = buyview.Search;
+				buyview.Search = function () {
+					var txt = this.m_SearchField.text;
+					var split = txt.split(" * ");
+					if ( split[1]){
+						this.splitText = split[1];
+						this.m_SearchField.text = split[0];
+					}else{
+						this.splitText = undefined;
+					}
+					this._Search();
+				}
+			}
+			*/
+			// calculates each price for sell prompt
+			buyview.m_SellItemPromptWindow.m_ItemCounter.SignalValueChanged.Connect(SlotCashAmountChanged, this);
+			// Adds new column based on repair price
+			buyview.m_ResultsList.AddColumn(MCLItemInventoryItem.INVENTORY_ITEM_COLUMN_SELL_PRICE, "Each", 123, 0);
+			buyview.m_ResultsList.SetSize(758, 390);
+			Tradepost.SignalSearchResult.Disconnect(buyview.SlotResultsReceived);
+			if (SavedData["SortColumn"]){
+				buyview.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
+				buyview.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
+			}
+			buyview.m_ResultsList.SignalSortClicked.Connect(SlotSortChanged, this);
 		}
 	}
 	
@@ -89,7 +131,6 @@ class com.fox.Reauction.Reauction {
 		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
 		if(buyview){
 			buyview.m_SearchHelptext._visible = false;
-			
 			var itemsArray:Array = new Array();
 			buyview.UnSelectRows();
 			buyview.m_ResultsList.RemoveAllItems();
@@ -181,6 +222,7 @@ class com.fox.Reauction.Reauction {
 			// there's 20ms delay on populating subtypes
 			setTimeout(Delegate.create(this, function(){
 				subtype.selectedIndex = this.SavedData.subtype;
+				subtype.dispatchEvent({type:"select"});
 			}), 50);
 
 			var rarity = buyview.m_RarityDropdownMenu;
@@ -191,6 +233,7 @@ class com.fox.Reauction.Reauction {
 			var useable = buyview.m_UsableItemsOnlyCheckBox;
 
 			rarity.selectedIndex = SavedData.rarity;
+			rarity.dispatchEvent({type:"select"});
 
 			minstack.text = SavedData.minStack;
 			maxstack.text = SavedData.maxStack;
@@ -204,52 +247,7 @@ class com.fox.Reauction.Reauction {
 			useable.selected = SavedData.useable;
 		}
 	}
-	
-	private function HookWindow(attempt) {
-		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-		if (buyview.m_SearchButton._x && buyview.m_SellItemPromptWindow["SlotCashAmountChanged"]) {
-			var saveMode = buyview.m_ResultsFooter.attachMovie("CheckboxDark", "m_saveMode",  buyview.m_ResultsFooter.getNextHighestDepth());
-			saveMode.autoSize = "left";
-			saveMode.label = "Save all parameters";
-			saveMode.selected = false;
-			saveMode.selected = !SavedData.MainOnly;
-			saveMode.addEventListener("select", this, "ModeChanged");
-			saveMode._x = buyview.m_ResultsFooter._width - buyview.m_UsableItemsOnlyCheckBox._width - saveMode._width - 10;
-			saveMode._y = buyview.m_ResultsFooter._height / 2 - saveMode._height / 2;
-			DrawButton();
 
-			/*
-			buyview.splitText = undefined;
-			if (!buyview._Search){
-				buyview._Search = buyview.Search;
-				buyview.Search = function () {
-					var txt = this.m_SearchField.text;
-					var split = txt.split(" * ");
-					if ( split[1]){
-						this.splitText = split[1];
-						this.m_SearchField.text = split[0];
-					}else{
-						this.splitText = undefined;
-					}
-					this._Search();
-				}
-			}
-			*/
-			// calculates each price for sell prompt
-			buyview.m_SellItemPromptWindow.m_ItemCounter.SignalValueChanged.Connect(SlotCashAmountChanged, this);
-			// Adds new column based on repair price
-			buyview.m_ResultsList.AddColumn(MCLItemInventoryItem.INVENTORY_ITEM_COLUMN_SELL_PRICE, "Each", 123, 0);
-			buyview.m_ResultsList.SetSize(758, 390);
-			Tradepost.SignalSearchResult.Disconnect(buyview.SlotResultsReceived);
-			if (SavedData["SortColumn"]){
-				buyview.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
-				buyview.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
-			}
-			buyview.m_ResultsList.SignalSortClicked.Connect(SlotSortChanged, this);
-		} else if (attempt < 10) {
-			setTimeout(Delegate.create(this, HookWindow), 50, attempt + 1);
-		}
-	}
 	private function SlotSortChanged(){
 		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
 		SavedData["SortColumn"] = buyview.m_ResultsList.GetSortColumn();
