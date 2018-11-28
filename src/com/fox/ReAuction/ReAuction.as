@@ -5,7 +5,6 @@ import com.GameInterface.TradepostSearchResultData;
 import com.Utils.Archive;
 import com.GameInterface.Tradepost;
 import com.GameInterface.DistributedValue;
-import com.Utils.ID32;
 import mx.utils.Delegate;
 import com.Utils.LDBFormat;
 
@@ -14,6 +13,7 @@ class com.fox.Reauction.Reauction {
 	private var TradePostSignal:DistributedValue;
 	private var m_clearButton:MovieClip;
 	private static var EXPIRATION_DAYS:String = LDBFormat.LDBGetText("MiscGUI", "expirationDays");
+	private var BuyView:MovieClip;
 
 	public static function main(swfRoot:MovieClip):Void {
 		var ReAuc = new Reauction(swfRoot)
@@ -22,7 +22,7 @@ class com.fox.Reauction.Reauction {
 		swfRoot.OnModuleDeactivated = function() { return ReAuc.SaveConfig(); }
 		swfRoot.OnUnload = function() { ReAuc.CleanUp();}
 	}
-	
+
 	public function Reauction(swfRoot: MovieClip) {
 		TradePostSignal = DistributedValue.Create("tradepost_window");
 	}
@@ -71,81 +71,39 @@ class com.fox.Reauction.Reauction {
 		archive.AddEntry("SortDirection", SavedData.SortDirection);
 		return archive
 	}
-	
+
 	public function CleanUp() {
 		Tradepost.SignalSearchResult.Disconnect(GetSearchData, this);
 		TradePostSignal.SignalChanged.Disconnect(TradePostOpened, this);
 		Tradepost.SignalSearchResult.Disconnect(SlotResultsReceived, this);
 	}
 
-	
 	private function TradePostOpened() {
 		if (TradePostSignal.GetValue()) {
-			var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-			if (!buyview._visible || !buyview.m_SearchButton._x || !buyview.m_SellItemPromptWindow["SlotCashAmountChanged"]) {
+			BuyView = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
+			if (!BuyView._visible || !BuyView.m_SearchButton._x || !BuyView.m_SellItemPromptWindow["SlotCashAmountChanged"]) {
 				setTimeout(Delegate.create(this, TradePostOpened), 50);
 				return
 			}
-			var saveMode = buyview.m_ResultsFooter.attachMovie("CheckboxDark", "m_saveMode",  buyview.m_ResultsFooter.getNextHighestDepth());
-			saveMode.autoSize = "left";
-			saveMode.label = "Save all parameters";
-			saveMode.selected = false;
-			saveMode.selected = !SavedData.MainOnly;
-			saveMode.addEventListener("select", this, "ModeChanged");
-			saveMode._x = buyview.m_ResultsFooter._width - buyview.m_UsableItemsOnlyCheckBox._width - saveMode._width - 10;
-			saveMode._y = buyview.m_ResultsFooter._height / 2 - saveMode._height / 2;
-			DrawButton();
-
-			/*
-			buyview.splitText = undefined;
-			if (!buyview._Search){
-				buyview._Search = buyview.Search;
-				buyview.Search = function () {
-					var txt = this.m_SearchField.text;
-					var split = txt.split(" * ");
-					if ( split[1]){
-						this.splitText = split[1];
-						this.m_SearchField.text = split[0];
-					}else{
-						this.splitText = undefined;
-					}
-					this._Search();
-				}
-			}
-			*/
-			// calculates each price for sell prompt
-			buyview.m_SellItemPromptWindow.m_ItemCounter.SignalValueChanged.Connect(SlotCashAmountChanged, this);
-			// Adds new column based on repair price
-			buyview.m_ResultsList.AddColumn(MCLItemInventoryItem.INVENTORY_ITEM_COLUMN_SELL_PRICE, "Each", 123, 0);
-			buyview.m_ResultsList.SetSize(758, 390);
-			Tradepost.SignalSearchResult.Disconnect(buyview.SlotResultsReceived);
-			if (SavedData["SortColumn"]){
-				buyview.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
-				buyview.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
-			}
-			buyview.m_ResultsList.SignalSortClicked.Connect(SlotSortChanged, this);
+			setTimeout(Delegate.create(this, HookWindow), 100);
 		}
 	}
-	
-	private function SlotResultsReceived(){
-		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-		if(buyview){
-			buyview.m_SearchHelptext._visible = false;
+
+	private function SlotResultsReceived() {
+		if (BuyView) {
+			BuyView.m_SearchHelptext._visible = false;
 			var itemsArray:Array = new Array();
-			buyview.UnSelectRows();
-			buyview.m_ResultsList.RemoveAllItems();
-			
+			BuyView.UnSelectRows();
+			BuyView.m_ResultsList.RemoveAllItems();
+
 			var resultsCount:Number = Tradepost.m_SearchResults.length;
-			var showUsableOnly:Boolean = buyview.m_UsableItemsOnlyCheckBox.selected;
-				
-			for (var i:Number = 0; i < resultsCount; ++i )
-			{
+			var showUsableOnly:Boolean = BuyView.m_UsableItemsOnlyCheckBox.selected;
+
+			for (var i:Number = 0; i < resultsCount; ++i ) {
 				var result:TradepostSearchResultData = Tradepost.m_SearchResults[i];
-				buyview.m_CurrentSearchResult = result.m_SearchResultId;
-				
-				if (!showUsableOnly || result.m_Item.m_CanUse)
-				{
-					//trace(result.m_TokenType1);
+				BuyView.m_CurrentSearchResult = result.m_SearchResultId;
+
+				if (!showUsableOnly || result.m_Item.m_CanUse) {
 					result.m_Item.m_TokenCurrencyType1 = result.m_TokenType1;
 					result.m_Item.m_TokenCurrencyPrice1 = result.m_TokenType1_Amount;
 					result.m_Item.m_TokenCurrencyType2 = result.m_TokenType2;
@@ -157,80 +115,91 @@ class com.fox.Reauction.Reauction {
 
 					var item:MCLItemInventoryItem = new MCLItemInventoryItem(result.m_Item, undefined);
 					item.SetId( result.m_ItemId );
-			
+
 					item.m_Seller = result.m_SellerName;
 					item.m_Expires = Math.round(result.m_ExpireDate / 86400) + " " + EXPIRATION_DAYS;
-					/*
-					if (buyview.splitText){
-						var idx = item.m_InventoryItem.m_Name.toLowerCase().lastIndexOf(buyview.splitText.toLowerCase());
-						var idx2 = item.m_InventoryItem.m_Name.toLowerCase().indexOf(buyview.m_SearchField.text.toLowerCase());
-						if ( idx == -1 && item.m_InventoryItem.m_Name){
-							continue
-						}else if(idx > idx2+buyview.m_SearchField.text.length){
-							itemsArray.push(item);
-						}
-					}else{
-						itemsArray.push(item);
-					}
-					*/
 					itemsArray.push(item);
 				}
 			}
-			buyview.m_ResultsList.AddItems(itemsArray); 
-			if (SavedData["SortColumn"]){
-				buyview.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
-				buyview.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
-				buyview.m_ResultsList.Resort();
+			BuyView.m_ResultsList.AddItems(itemsArray);
+			if (SavedData["SortColumn"]) {
+				BuyView.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
+				BuyView.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
+				BuyView.m_ResultsList.Resort();
 			}
-			buyview.m_ResultsList.SetScrollBar(buyview.m_ScrollBar);
-			buyview.Layout();
+			BuyView.m_ResultsList.SetScrollBar(BuyView.m_ScrollBar);
+			BuyView.Layout();
 		}
 	}
 
-	private function ModeChanged(){
+	private function HookWindow() {
+		var saveMode = BuyView.m_ResultsFooter.attachMovie("CheckboxDark", "m_saveMode",  BuyView.m_ResultsFooter.getNextHighestDepth());
+		saveMode.autoSize = "left";
+		saveMode.label = "Save all parameters";
+		saveMode.selected = !SavedData.MainOnly;
+		saveMode.addEventListener("select", this, "ModeChanged");
+		saveMode._x = BuyView.m_ResultsFooter._width - BuyView.m_UsableItemsOnlyCheckBox._width - saveMode._width - 10;
+		saveMode._y = BuyView.m_ResultsFooter._height / 2 - saveMode._height / 2;
+		DrawButton();
+		BuyView._Search = BuyView.Search;
+		BuyView.Search = function ():Void {
+			this._Search();
+			this.m_SearchButton.disabled = false;
+		}
+		BuyView.m_SellItemPromptWindow.m_ItemCounter.SignalValueChanged.Connect(SlotCashAmountChanged, this);
+		BuyView.m_ResultsList.AddColumn(MCLItemInventoryItem.INVENTORY_ITEM_COLUMN_SELL_PRICE, "Each", 123, 0);
+		BuyView.m_ResultsList.SetSize(758, 390);
+		Tradepost.SignalSearchResult.Disconnect(BuyView.SlotResultsReceived);
+		if (SavedData["SortColumn"]) {
+			BuyView.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
+			BuyView.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
+		}
+		BuyView.m_ResultsList.SignalSortClicked.Connect(SlotSortChanged, this);
+	}
+
+	private function ModeChanged() {
 		SavedData.MainOnly = !SavedData.MainOnly;
 		DrawButton();
 	}
-	
-	private function DrawButton(){
+
+	private function DrawButton() {
 		if (!SavedData.MainOnly) {
-			var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-			m_clearButton = buyview.attachMovie("ChromeButtonGray", "m_clearButton", buyview.getNextHighestDepth());
+			var BuyView = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
+			m_clearButton = BuyView.attachMovie("ChromeButtonGray", "m_clearButton", BuyView.getNextHighestDepth());
 			m_clearButton.disableFocus = true;
 			m_clearButton.textField.text = LDBFormat.LDBGetText(100, 49866466).toUpperCase();
-			m_clearButton._x = buyview.m_SearchButton._x;
-			m_clearButton._y = buyview.m_SearchButton._y-25;
-			m_clearButton._width = buyview.m_SearchButton._width;
+			m_clearButton._x = BuyView.m_SearchButton._x;
+			m_clearButton._y = BuyView.m_SearchButton._y-25;
+			m_clearButton._width = BuyView.m_SearchButton._width;
 			m_clearButton._visible = true;
 			m_clearButton.addEventListener("click", this, "ClearSearchData");
-		}else{
+		} else {
 			m_clearButton.removeMovieClip();
 		}
 		PopulateFields();
 	}
-	
-	private function PopulateFields(){
-		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-		var type:MovieClip = buyview.m_ItemTypeDropdownMenu;
-		if (type.selectedIndex != SavedData.type){
+
+	private function PopulateFields() {
+		var type:MovieClip = BuyView.m_ItemTypeDropdownMenu;
+		if (type.selectedIndex != SavedData.type) {
 			type.selectedIndex = SavedData.type;
 			type.dispatchEvent({type:"select"});
 		}
 
-		var subtype = buyview.m_SubTypeDropdownMenu;
+		var subtype = BuyView.m_SubTypeDropdownMenu;
 		if (!SavedData.MainOnly) {
 			// there's 20ms delay on populating subtypes
-			setTimeout(Delegate.create(this, function(){
+			setTimeout(Delegate.create(this, function() {
 				subtype.selectedIndex = this.SavedData.subtype;
 				subtype.dispatchEvent({type:"select"});
 			}), 50);
 
-			var rarity = buyview.m_RarityDropdownMenu;
-			var minstack = buyview.m_MinStacksField;
-			var maxstack = buyview.m_MaxStacksField;
-			var searchField = buyview.m_SearchField;
-			var exact = buyview.m_UseExactNameCheckBox;
-			var useable = buyview.m_UsableItemsOnlyCheckBox;
+			var rarity = BuyView.m_RarityDropdownMenu;
+			var minstack = BuyView.m_MinStacksField;
+			var maxstack = BuyView.m_MaxStacksField;
+			var searchField = BuyView.m_SearchField;
+			var exact = BuyView.m_UseExactNameCheckBox;
+			var useable = BuyView.m_UsableItemsOnlyCheckBox;
 
 			rarity.selectedIndex = SavedData.rarity;
 			rarity.dispatchEvent({type:"select"});
@@ -248,37 +217,33 @@ class com.fox.Reauction.Reauction {
 		}
 	}
 
-	private function SlotSortChanged(){
-		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-		SavedData["SortColumn"] = buyview.m_ResultsList.GetSortColumn();
-		SavedData["SortDirection"] = buyview.m_ResultsList.GetSortDirection();
+	private function SlotSortChanged() {
+		SavedData["SortColumn"] = BuyView.m_ResultsList.GetSortColumn();
+		SavedData["SortDirection"] = BuyView.m_ResultsList.GetSortDirection();
 	}
-	
-	private function SlotCashAmountChanged(newValue){
-		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-		if (buyview.m_SellItemSlot){
-			var inv:Inventory = new Inventory(new ID32(_global.Enums.InvType.e_Type_GC_BackpackContainer, com.GameInterface.Game.Character.GetClientCharID().GetInstance()))
-			var item:InventoryItem = inv.GetItemAt(buyview.m_SellItemSlot);
-			if(item.m_StackSize>1){
+
+	private function SlotCashAmountChanged(newValue) {
+		if (BuyView.m_SellItemSlot) {
+			var inv:Inventory = new Inventory(BuyView.m_SellItemInventory);
+			var item:InventoryItem = inv.GetItemAt(BuyView.m_SellItemSlot);
+			if (item.m_StackSize > 1) {
 				var commissionFee:Number = (newValue == 0) ? 0 : Math.round(newValue * (1.0 - com.GameInterface.Utils.GetGameTweak("TradePost_SalesCommission")));
-				buyview.m_SellItemPromptWindow.m_WhenSoldPremiumCash.m_Label.text += " (" + Math.round(newValue / item.m_StackSize) + " ea)";
+				BuyView.m_SellItemPromptWindow.m_WhenSoldPremiumCash.m_Label.text += " (" + Math.round(newValue / item.m_StackSize) + " ea)";
 			}
 		}
 	}
 
 	private function ClearSearchData() {
-		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
+		var type = BuyView.m_ItemTypeDropdownMenu;
+		var subtype = BuyView.m_SubTypeDropdownMenu;
+		var rarity = BuyView.m_RarityDropdownMenu;
 
-		var type = buyview.m_ItemTypeDropdownMenu;
-		var subtype = buyview.m_SubTypeDropdownMenu;
-		var rarity = buyview.m_RarityDropdownMenu;
+		var minstack = BuyView.m_MinStacksField;
+		var maxstack = BuyView.m_MaxStacksField;
+		var searchField = BuyView.m_SearchField;
 
-		var minstack = buyview.m_MinStacksField;
-		var maxstack = buyview.m_MaxStacksField;
-		var searchField = buyview.m_SearchField;
-
-		var exact = buyview.m_UseExactNameCheckBox;
-		var useable = buyview.m_UsableItemsOnlyCheckBox;
+		var exact = BuyView.m_UseExactNameCheckBox;
+		var useable = BuyView.m_UsableItemsOnlyCheckBox;
 
 		SavedData["type"] = type.selectedIndex;
 		SavedData["subtype"] = 0;
@@ -302,19 +267,17 @@ class com.fox.Reauction.Reauction {
 	}
 
 	private function GetSearchData() {
-		var buyview = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-		if(buyview){
-			var type = buyview.m_ItemTypeDropdownMenu;
-			var subtype = buyview.m_SubTypeDropdownMenu;
-			var rarity = buyview.m_RarityDropdownMenu;
-			
-			var minstack = buyview.m_MinStacksField;
-			var maxstack = buyview.m_MaxStacksField;
-			var keywords = buyview.m_SearchField;
+		if (BuyView) {
+			var type = BuyView.m_ItemTypeDropdownMenu;
+			var subtype = BuyView.m_SubTypeDropdownMenu;
+			var rarity = BuyView.m_RarityDropdownMenu;
 
+			var minstack = BuyView.m_MinStacksField;
+			var maxstack = BuyView.m_MaxStacksField;
+			var keywords = BuyView.m_SearchField;
 
-			var exact = buyview.m_UseExactNameCheckBox;
-			var useable = buyview.m_UsableItemsOnlyCheckBox;
+			var exact = BuyView.m_UseExactNameCheckBox;
+			var useable = BuyView.m_UsableItemsOnlyCheckBox;
 
 			SavedData["type"] = type.selectedIndex;
 			SavedData["subtype"] = subtype.selectedIndex;
@@ -324,11 +287,6 @@ class com.fox.Reauction.Reauction {
 			SavedData["keywords"] = keywords.text;
 			SavedData["exact"] = exact.selected;
 			SavedData["useable"] = useable.selected;
-			/*
-			if (buyview.splitText){
-				SavedData["keywords"] += " * " + buyview.splitText;
-			}
-			*/
 		}
 	}
 
