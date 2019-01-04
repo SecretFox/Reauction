@@ -2,6 +2,7 @@ import com.Components.InventoryItemList.MCLItemInventoryItem;
 import com.GameInterface.Inventory;
 import com.GameInterface.InventoryItem;
 import com.GameInterface.TradepostSearchResultData;
+import com.GameInterface.UtilsBase;
 import com.Utils.Archive;
 import com.GameInterface.Tradepost;
 import com.GameInterface.DistributedValue;
@@ -37,7 +38,7 @@ class com.fox.Reauction.Reauction {
 	public function LoadConfig(config: Archive) {
 		SavedData = new Object();
 
-		SavedData["MainOnly"] = Boolean(config.FindEntry("MainOnly", false));
+		SavedData["MainOnly"] = Boolean(config.FindEntry("MainOnly", true));
 		SavedData["SortColumn"] = Number(config.FindEntry("SortColumn",-1));
 		SavedData["SortDirection"] = Number(config.FindEntry("SortDirection",0));
 
@@ -51,6 +52,7 @@ class com.fox.Reauction.Reauction {
 
 		SavedData["exact"] = Boolean(config.FindEntry("exact", false));
 		SavedData["useable"] = Boolean(config.FindEntry("useable", false));
+		SavedData["fr"] = Boolean(config.FindEntry("fr", false));
 	}
 
 	public function SaveConfig() : Archive {
@@ -69,6 +71,7 @@ class com.fox.Reauction.Reauction {
 		archive.AddEntry("useable", SavedData.useable);
 		archive.AddEntry("SortColumn", SavedData.SortColumn);
 		archive.AddEntry("SortDirection", SavedData.SortDirection);
+		archive.AddEntry("fr", SavedData.fr);
 		return archive
 	}
 
@@ -131,42 +134,149 @@ class com.fox.Reauction.Reauction {
 			BuyView.Layout();
 		}
 	}
+	
+	private function ReplaceAccent(){
+		var org:String = BuyView.m_SearchField.text;
+		var newStr = "";
+		var replaced = false;
+		var sharpS = false;
+		for (var i = 0; i < org.length; i++){
+			var char = org.charAt(i).toLowerCase()
+			switch(char){
+				case("ù"):
+				case("û"):
+				case("ü"):
+					newStr += "u"
+					replaced = true;
+					break
+				case("ÿ"):
+					newStr += "y"
+					replaced = true;
+					break
+				case("à"):
+				case("â"):
+				case("ä"):
+					newStr += "a"
+					replaced = true;
+					break
+				case("æ"):
+					newStr += "ae"
+					replaced = true;
+					break
+				case("ç"):
+					newStr += "ç"
+					replaced = true;
+					break
+				case("é"):
+				case("è"):
+				case("ê"):
+				case("ë"):
+					newStr += "e"
+					replaced = true;
+					break
+				case("ï"):
+				case("î"):
+					newStr += "i"
+					replaced = true;
+					break
+				case("ô"):
+				case("ö"):
+					newStr += "o"
+					replaced = true;
+					break
+				case("œ"):
+					newStr += "oe"
+					replaced = true;
+					break
+				case("ß"):
+					newStr += char;
+					sharpS = true;
+					break
+				default:
+					newStr += char;
+			}
+		}
+		//replaced some letters, but didn't contain ß
+		if (replaced && !sharpS){
+			BuyView.m_UseExactNameCheckBox.selected = false;
+			BuyView.m_SearchField.text = newStr;
+		}
+		//Contains ß, find longest valid search string
+		if (sharpS){
+			var splitString:Array;
+			BuyView.m_UseExactNameCheckBox.selected = false;
+			splitString = newStr.split("ß");
+			var longest ="";
+			for (var i in splitString){
+				if (splitString[i].length > longest.length) longest = splitString[i];
+			}
+			BuyView.m_SearchField.text = longest;
+		}
+	}
+	
+	private function Search(){
+		if (SavedData.fr){
+			ReplaceAccent();
+		}
+		BuyView._Search();
+		BuyView.m_SearchButton.disabled = false;
+	}
 
 	private function HookWindow() {
 		var saveMode = BuyView.m_ResultsFooter.attachMovie("CheckboxDark", "m_saveMode",  BuyView.m_ResultsFooter.getNextHighestDepth());
 		saveMode.autoSize = "left";
-		saveMode.label = "Save all parameters";
+		saveMode.label = "Save all";
 		saveMode.selected = !SavedData.MainOnly;
 		saveMode.addEventListener("select", this, "ModeChanged");
-		saveMode._x = BuyView.m_ResultsFooter._width - BuyView.m_UsableItemsOnlyCheckBox._width - saveMode._width - 10;
-		saveMode._y = BuyView.m_ResultsFooter._height / 2 - saveMode._height / 2;
+		saveMode._x = BuyView.m_ResultsFooter._width - BuyView.m_UsableItemsOnlyCheckBox._width - saveMode._width + 50;
+		saveMode._y = BuyView.m_UsableItemsOnlyCheckBox._y;
 		DrawButton();
-		BuyView._Search = BuyView.Search;
-		BuyView.Search = function ():Void {
-			this._Search();
-			this.m_SearchButton.disabled = false;
+		// fix for french accents
+		if (LDBFormat.GetCurrentLanguageCode() != "en"){
+			var accenfix = BuyView.m_ResultsFooter.attachMovie("CheckboxDark", "m_accenfix",  BuyView.m_ResultsFooter.getNextHighestDepth());
+			accenfix.autoSize = "left";
+			accenfix.label = "Remove Accents";
+			accenfix.selected = SavedData.fr;
+			accenfix.addEventListener("select", this, "FrChanged");
+			accenfix._x = BuyView.m_ResultsFooter.m_saveMode._x - accenfix._width + 20;
+			accenfix._y = BuyView.m_ResultsFooter.m_saveMode._y
+		}else{
+			SavedData.fr = false;
 		}
+		//Patron text is stealing clicks
+		BuyView.m_MemberText._width = "350";
+		
+		//Extend search to enable search button and remove accents
+		BuyView._Search = BuyView.Search;
+		BuyView.Search = Delegate.create(this, Search);
+		
+		//Each price column
 		BuyView.m_SellItemPromptWindow.m_ItemCounter.SignalValueChanged.Connect(SlotCashAmountChanged, this);
 		BuyView.m_ResultsList.AddColumn(MCLItemInventoryItem.INVENTORY_ITEM_COLUMN_SELL_PRICE, "Each", 123, 0);
 		BuyView.m_ResultsList.SetSize(758, 390);
+		
 		Tradepost.SignalSearchResult.Disconnect(BuyView.SlotResultsReceived);
+
+		// sort results
 		if (SavedData["SortColumn"]) {
 			BuyView.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
 			BuyView.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
 		}
 		BuyView.m_ResultsList.SignalSortClicked.Connect(SlotSortChanged, this);
+		
 	}
-
+	
 	private function ModeChanged() {
 		SavedData.MainOnly = !SavedData.MainOnly;
 		DrawButton();
 	}
-
+	private function FrChanged() {
+		SavedData.fr = !SavedData.fr;
+	}
 	private function DrawButton() {
 		if (!SavedData.MainOnly) {
 			var BuyView = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
 			m_clearButton = BuyView.attachMovie("ChromeButtonGray", "m_clearButton", BuyView.getNextHighestDepth());
-			m_clearButton.disableFocus = true;
 			m_clearButton.textField.text = LDBFormat.LDBGetText(100, 49866466).toUpperCase();
 			m_clearButton._x = BuyView.m_SearchButton._x;
 			m_clearButton._y = BuyView.m_SearchButton._y-25;
@@ -188,7 +298,7 @@ class com.fox.Reauction.Reauction {
 
 		var subtype = BuyView.m_SubTypeDropdownMenu;
 		if (!SavedData.MainOnly) {
-			// there's 20ms delay on populating subtypes
+			// there's small delay on populating subtypes
 			setTimeout(Delegate.create(this, function() {
 				subtype.selectedIndex = this.SavedData.subtype;
 				subtype.dispatchEvent({type:"select"});
