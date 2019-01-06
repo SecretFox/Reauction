@@ -2,7 +2,6 @@ import com.Components.InventoryItemList.MCLItemInventoryItem;
 import com.GameInterface.Inventory;
 import com.GameInterface.InventoryItem;
 import com.GameInterface.TradepostSearchResultData;
-import com.GameInterface.UtilsBase;
 import com.Utils.Archive;
 import com.GameInterface.Tradepost;
 import com.GameInterface.DistributedValue;
@@ -153,6 +152,7 @@ class com.fox.Reauction.Reauction {
 					newStr += "y"
 					replaced = true;
 					break
+				case("á"):
 				case("à"):
 				case("â"):
 				case("ä"):
