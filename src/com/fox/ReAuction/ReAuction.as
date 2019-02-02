@@ -131,6 +131,10 @@ class com.fox.Reauction.Reauction {
 			}
 			BuyView.m_ResultsList.SetScrollBar(BuyView.m_ScrollBar);
 			BuyView.Layout();
+			if (BuyView.m_SellItemPromptWindow._visible){
+				Selection.setFocus(BuyView.m_SellItemPromptWindow.m_ItemCounter.m_TextInput.textField);
+			}
+			
 		}
 	}
 	
