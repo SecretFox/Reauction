@@ -4,37 +4,33 @@ import com.GameInterface.InventoryItem;
 import com.GameInterface.TradepostSearchResultData;
 import com.Utils.Archive;
 import com.GameInterface.Tradepost;
-import com.GameInterface.DistributedValue;
 import mx.utils.Delegate;
 import com.Utils.LDBFormat;
 
 class com.fox.Reauction.Reauction {
 	private var SavedData:Object;
-	private var TradePostSignal:DistributedValue;
 	private var m_clearButton:MovieClip;
 	private static var EXPIRATION_DAYS:String = LDBFormat.LDBGetText("MiscGUI", "expirationDays");
 	private var BuyView:MovieClip;
 
 	public static function main(swfRoot:MovieClip):Void {
 		var ReAuc = new Reauction(swfRoot)
-		swfRoot.onLoad = function() { ReAuc.startUp(); }
-		swfRoot.OnModuleActivated = function(config:Archive) { ReAuc.LoadConfig(config);}
-		swfRoot.OnModuleDeactivated = function() { return ReAuc.SaveConfig(); }
-		swfRoot.OnUnload = function() { ReAuc.CleanUp();}
+		swfRoot.onLoad = function() { ReAuc.onLoad(); }
+		swfRoot.OnUnload = function() { ReAuc.OnUnload();}
+		swfRoot.OnModuleActivated = function(config:Archive) { ReAuc.OnModuleActivated(config);}
+		swfRoot.OnModuleDeactivated = function() { return ReAuc.OnModuleDeactivated(); }
+		
 	}
 
 	public function Reauction(swfRoot: MovieClip) {
-		TradePostSignal = DistributedValue.Create("tradepost_window");
 	}
 
-	public function startUp() {
+	public function onLoad() {
 		Tradepost.SignalSearchResult.Connect(GetSearchData, this);
 		Tradepost.SignalSearchResult.Connect(SlotResultsReceived, this);
-		TradePostSignal.SignalChanged.Connect(TradePostOpened, this);
-		setTimeout(Delegate.create(this, TradePostOpened), 1000);
 	}
 
-	public function LoadConfig(config: Archive) {
+	public function OnModuleActivated(config: Archive) {
 		SavedData = new Object();
 
 		SavedData["MainOnly"] = Boolean(config.FindEntry("MainOnly", true));
@@ -52,11 +48,11 @@ class com.fox.Reauction.Reauction {
 		SavedData["exact"] = Boolean(config.FindEntry("exact", false));
 		SavedData["useable"] = Boolean(config.FindEntry("useable", false));
 		SavedData["fr"] = Boolean(config.FindEntry("fr", false));
+		HookWindow();
 	}
 
-	public function SaveConfig() : Archive {
+	public function OnModuleDeactivated() : Archive {
 		var archive: Archive = new Archive();
-
 		archive.AddEntry("MainOnly", SavedData.MainOnly);
 		archive.AddEntry("type", SavedData.type);
 		archive.AddEntry("subtype", SavedData.subtype);
@@ -74,21 +70,9 @@ class com.fox.Reauction.Reauction {
 		return archive
 	}
 
-	public function CleanUp() {
+	public function OnUnload() {
 		Tradepost.SignalSearchResult.Disconnect(GetSearchData, this);
-		TradePostSignal.SignalChanged.Disconnect(TradePostOpened, this);
 		Tradepost.SignalSearchResult.Disconnect(SlotResultsReceived, this);
-	}
-
-	private function TradePostOpened() {
-		if (TradePostSignal.GetValue()) {
-			BuyView = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-			if (!BuyView._visible || !BuyView.m_SearchButton._x || !BuyView.m_SellItemPromptWindow["SlotCashAmountChanged"]) {
-				setTimeout(Delegate.create(this, TradePostOpened), 50);
-				return
-			}
-			setTimeout(Delegate.create(this, HookWindow), 100);
-		}
 	}
 
 	private function SlotResultsReceived() {
@@ -227,6 +211,11 @@ class com.fox.Reauction.Reauction {
 	}
 
 	private function HookWindow() {
+		BuyView = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
+		if (!BuyView._visible || !BuyView.m_SearchButton._x || !BuyView.m_SellItemPromptWindow["SlotCashAmountChanged"]) {
+			setTimeout(Delegate.create(this, HookWindow), 50);
+			return
+		}
 		var saveMode = BuyView.m_ResultsFooter.attachMovie("CheckboxDark", "m_saveMode",  BuyView.m_ResultsFooter.getNextHighestDepth());
 		saveMode.autoSize = "left";
 		saveMode.label = "Save all";

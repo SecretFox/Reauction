@@ -6,7 +6,7 @@
     depth_layer = "Top"
     sub_depth   = "10"
     variable    = "Reauction"
-    criteria    = "Reauction &amp;&amp; (guimode &amp; (GUIMODEFLAGS_INPLAY | GUIMODEFLAGS_ENABLEALLGUI))"
+    criteria    = "Reauction &amp;&amp; tradepost_window &amp;&amp; (guimode &amp; (GUIMODEFLAGS_INPLAY | GUIMODEFLAGS_ENABLEALLGUI))"
 	config_name = "Reauction_Cfg"
   />
 </Root>
