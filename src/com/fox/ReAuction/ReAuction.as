@@ -1,4 +1,5 @@
 import com.Components.InventoryItemList.MCLItemInventoryItem;
+import com.Components.MultiColumnList.HeaderButton;
 import com.GameInterface.Inventory;
 import com.GameInterface.InventoryItem;
 import com.GameInterface.TradepostSearchResultData;
@@ -212,7 +213,9 @@ class com.fox.Reauction.Reauction {
 
 	private function HookWindow() {
 		BuyView = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
-		if (!BuyView._visible || !BuyView.m_SearchButton._x || !BuyView.m_SellItemPromptWindow["SlotCashAmountChanged"]) {
+		if (!BuyView._visible || !BuyView.m_SearchButton._x || !BuyView.m_SellItemPromptWindow["SlotCashAmountChanged"] ||
+			(_root["tradepostutil\\tradepostutil"] && !BuyView.u_clearText))
+		{
 			setTimeout(Delegate.create(this, HookWindow), 50);
 			return
 		}
@@ -252,11 +255,24 @@ class com.fox.Reauction.Reauction {
 
 		// sort results
 		if (SavedData["SortColumn"]) {
+			for (var i in BuyView.m_ResultsList.m_HeaderView.m_HeaderButtons)
+			{
+				var Header:HeaderButton = BuyView.m_ResultsList.m_HeaderView.m_HeaderButtons[i];
+				if (Header.GetId() == SavedData["SortColumn"])
+				{
+					Header.SetShowArrow(true);
+					Header.SetSortDirection(SavedData["SortDirection"]);
+					if (SavedData["SortDirection"] != 0)
+					{
+						Header["m_SortArrow"]._rotation = -180;
+					}
+					break;
+				}
+			}
 			BuyView.m_ResultsList.SetSortColumn(SavedData["SortColumn"]);
 			BuyView.m_ResultsList.SetSortDirection(SavedData["SortDirection"]);
 		}
 		BuyView.m_ResultsList.SignalSortClicked.Connect(SlotSortChanged, this);
-		
 	}
 	
 	private function ModeChanged() {
@@ -293,8 +309,11 @@ class com.fox.Reauction.Reauction {
 		if (!SavedData.MainOnly) {
 			// there's small delay on populating subtypes
 			setTimeout(Delegate.create(this, function() {
-				subtype.selectedIndex = this.SavedData.subtype;
-				subtype.dispatchEvent({type:"select"});
+				if ( subtype.selectedIndex != this.SavedData.subtype)
+				{
+					subtype.selectedIndex = this.SavedData.subtype;
+					subtype.dispatchEvent({type:"select"});
+				}
 			}), 50);
 
 			var rarity = BuyView.m_RarityDropdownMenu;
@@ -349,24 +368,14 @@ class com.fox.Reauction.Reauction {
 		var useable = BuyView.m_UsableItemsOnlyCheckBox;
 
 		SavedData["type"] = type.selectedIndex;
-		SavedData["subtype"] = 0;
-		SavedData["rarity"] = 0;
-		SavedData["minStack"] = "0";
-		SavedData["maxStack"] = "9999999";
+		subtype.selectedIndex = SavedData["subtype"] = 0;
+		rarity.selectedIndex = SavedData["rarity"] = 0;
+		minstack.text = SavedData["minStack"] = "0";
+		maxstack.text = SavedData["maxStack"] = "9999999";
 		SavedData["keywords"] = "";
-		SavedData["exact"] = false;
-		SavedData["useable"] = false;
-
-		subtype.selectedIndex = SavedData.subtype;
-		rarity.selectedIndex = SavedData.rarity;
-
-		minstack.text = SavedData.minStack;
-		maxstack.text = SavedData.maxStack;
-
+		exact.selected = SavedData["exact"] = false;
+		useable.selected = SavedData["useable"] = false;
 		searchField.text = SavedData.keywords;
-
-		exact.selected = SavedData.exact;
-		useable.selected = SavedData.useable;
 	}
 
 	private function GetSearchData() {
