@@ -11,7 +11,7 @@
     <movie version="8" />
     <movie minorVersion="0" />
     <movie platform="Flash Player" />
-    <movie background="#FFFFFF" />
+    <movie background="#ADAAA7" />
   </output>
   <!-- Other classes to be compiled into your SWF -->
   <classpaths>
@@ -35,7 +35,7 @@
   </build>
   <!-- Class files to compile (other referenced classes will automatically be included) -->
   <compileTargets>
-    <compile path="src\com\fox\Reauction\ReAuction.as" />
+    <compile path="src\com\fox\Reauction\Reauction.as" />
   </compileTargets>
   <!-- Assets to embed into the output SWF -->
   <library>
@@ -51,8 +51,8 @@
   <postBuildCommand alwaysRun="False">xcopy "$(ProjectDir)\bin\*.*" "H:\Secret World Legends\Data\Gui\Custom\Flash\Reauction\" /e /y
 xcopy "$(ProjectDir)\src\mod\*.*" "H:\Secret World Legends\Data\Gui\Custom\Flash\Reauction\" /e /y
 
-xcopy "$(ProjectDir)\src\mod\*.*" "$(ProjectDir)/deployment/data/Gui/custom/flash/Reauction/*.*" /e /y
-xcopy "$(ProjectDir)\bin\*.*" "$(ProjectDir)/deployment/Data/Gui/Custom/Flash/Reauction/*.*" /e /y</postBuildCommand>
+xcopy "$(ProjectDir)\src\mod\*.*" "$(ProjectDir)/deployment/Reauction/*.*" /e /y
+xcopy "$(ProjectDir)\bin\*.*" "$(ProjectDir)/deployment/Reauction/*.*" /e /y</postBuildCommand>
   <!-- Other project options -->
   <options>
     <option showHiddenPaths="False" />

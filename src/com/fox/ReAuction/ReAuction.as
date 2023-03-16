@@ -15,12 +15,11 @@ class com.fox.Reauction.Reauction {
 	private var BuyView:MovieClip;
 
 	public static function main(swfRoot:MovieClip):Void {
-		var ReAuc = new Reauction(swfRoot)
+		var ReAuc:Reauction = new Reauction(swfRoot)
 		swfRoot.onLoad = function() { ReAuc.onLoad(); }
 		swfRoot.OnUnload = function() { ReAuc.OnUnload();}
 		swfRoot.OnModuleActivated = function(config:Archive) { ReAuc.OnModuleActivated(config);}
 		swfRoot.OnModuleDeactivated = function() { return ReAuc.OnModuleDeactivated(); }
-		
 	}
 
 	public function Reauction(swfRoot: MovieClip) {
@@ -48,7 +47,6 @@ class com.fox.Reauction.Reauction {
 
 		SavedData["exact"] = Boolean(config.FindEntry("exact", false));
 		SavedData["useable"] = Boolean(config.FindEntry("useable", false));
-		SavedData["fr"] = Boolean(config.FindEntry("fr", false));
 		HookWindow();
 	}
 
@@ -67,7 +65,6 @@ class com.fox.Reauction.Reauction {
 		archive.AddEntry("useable", SavedData.useable);
 		archive.AddEntry("SortColumn", SavedData.SortColumn);
 		archive.AddEntry("SortDirection", SavedData.SortDirection);
-		archive.AddEntry("fr", SavedData.fr);
 		return archive
 	}
 
@@ -119,96 +116,21 @@ class com.fox.Reauction.Reauction {
 			if (BuyView.m_SellItemPromptWindow._visible){
 				Selection.setFocus(BuyView.m_SellItemPromptWindow.m_ItemCounter.m_TextInput.textField);
 			}
-			
-		}
-	}
-	
-	private function ReplaceAccent(){
-		var org:String = BuyView.m_SearchField.text;
-		var newStr = "";
-		var replaced = false;
-		var sharpS = false;
-		for (var i = 0; i < org.length; i++){
-			var char = org.charAt(i).toLowerCase()
-			switch(char){
-				case("ù"):
-				case("û"):
-				case("ü"):
-					newStr += "u"
-					replaced = true;
-					break
-				case("ÿ"):
-					newStr += "y"
-					replaced = true;
-					break
-				case("á"):
-				case("à"):
-				case("â"):
-				case("ä"):
-					newStr += "a"
-					replaced = true;
-					break
-				case("æ"):
-					newStr += "ae"
-					replaced = true;
-					break
-				case("ç"):
-					newStr += "ç"
-					replaced = true;
-					break
-				case("é"):
-				case("è"):
-				case("ê"):
-				case("ë"):
-					newStr += "e"
-					replaced = true;
-					break
-				case("ï"):
-				case("î"):
-					newStr += "i"
-					replaced = true;
-					break
-				case("ô"):
-				case("ö"):
-					newStr += "o"
-					replaced = true;
-					break
-				case("œ"):
-					newStr += "oe"
-					replaced = true;
-					break
-				case("ß"):
-					newStr += char;
-					sharpS = true;
-					break
-				default:
-					newStr += char;
-			}
-		}
-		//replaced some letters, but didn't contain ß
-		if (replaced && !sharpS){
-			BuyView.m_UseExactNameCheckBox.selected = false;
-			BuyView.m_SearchField.text = newStr;
-		}
-		//Contains ß, find longest valid search string
-		if (sharpS){
-			var splitString:Array;
-			BuyView.m_UseExactNameCheckBox.selected = false;
-			splitString = newStr.split("ß");
-			var longest ="";
-			for (var i in splitString){
-				if (splitString[i].length > longest.length) longest = splitString[i];
-			}
-			BuyView.m_SearchField.text = longest;
 		}
 	}
 	
 	private function Search(){
-		if (SavedData.fr){
-			ReplaceAccent();
-		}
 		BuyView._Search();
 		BuyView.m_SearchButton.disabled = false;
+	}
+	
+	private function KillFocus(newFocus)
+	{
+		if (BuyView.m_ItemTypeDropdownMenu && newFocus == null)
+		{
+			Selection.setFocus(BuyView.m_ItemTypeDropdownMenu);
+			Selection.setFocus(null);
+		}
 	}
 
 	private function HookWindow() {
@@ -224,25 +146,14 @@ class com.fox.Reauction.Reauction {
 		saveMode.label = "Save all";
 		saveMode.selected = !SavedData.MainOnly;
 		saveMode.addEventListener("select", this, "ModeChanged");
+		BuyView.m_SearchField.textField.onKillFocus = Delegate.create(this, KillFocus);
 		saveMode._x = BuyView.m_ResultsFooter._width - BuyView.m_UsableItemsOnlyCheckBox._width - saveMode._width + 50;
 		saveMode._y = BuyView.m_UsableItemsOnlyCheckBox._y;
 		DrawButton();
-		// fix for french accents
-		if (LDBFormat.GetCurrentLanguageCode() != "en"){
-			var accenfix = BuyView.m_ResultsFooter.attachMovie("CheckboxDark", "m_accenfix",  BuyView.m_ResultsFooter.getNextHighestDepth());
-			accenfix.autoSize = "left";
-			accenfix.label = "Remove Accents";
-			accenfix.selected = SavedData.fr;
-			accenfix.addEventListener("select", this, "FrChanged");
-			accenfix._x = BuyView.m_ResultsFooter.m_saveMode._x - accenfix._width + 20;
-			accenfix._y = BuyView.m_ResultsFooter.m_saveMode._y
-		}else{
-			SavedData.fr = false;
-		}
 		//Patron text is stealing clicks
 		BuyView.m_MemberText._width = "350";
 		
-		//Extend search to enable search button and remove accents
+		//Extend search to enable search button
 		BuyView._Search = BuyView.Search;
 		BuyView.Search = Delegate.create(this, Search);
 		
@@ -279,9 +190,7 @@ class com.fox.Reauction.Reauction {
 		SavedData.MainOnly = !SavedData.MainOnly;
 		DrawButton();
 	}
-	private function FrChanged() {
-		SavedData.fr = !SavedData.fr;
-	}
+
 	private function DrawButton() {
 		if (!SavedData.MainOnly) {
 			var BuyView = _root.tradepost.m_Window.m_Content.m_ViewsContainer.m_BuyView;
